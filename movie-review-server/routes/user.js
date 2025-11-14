@@ -1,45 +1,63 @@
 const express = require('express')
-const  cryptoJs= require ('crypto-js')
-const jwt = require('json-web-token')
+const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 
-const pool =require('../db')
-const result= require('../utils/result')
+// userdefined modules
+const pool = require('../db')
+const config = require('../utils/config')
+const result = require('../utils/result')
 
 const router = express.Router()
 
-// router.post('/signin',(req,res)=>{
-//     const{email ,password}=req.body
-//     const encryptPassword = String(cryptoJs.SHA256(password))
-//   const sql = `SELECT * FROM user WHERE email = ? AND password = ?`
-//   pool.query(sql, [email, encryptPassword], (error, data) => {
-//     if (data) {
-//       if (data.length != 0) {
-//         const payload = {
-//           userId: data[0].id,
-//         }
-//         const token = jwt.sign(payload, config.secret)
-//         const body = {
-//           token: token,
-//           firstName: data[0].firstName,
-//           lastName: data[0].lastName,
-//         }
-//         res.send(result.createSuccess(body))
-//       } else res.send(result.createFailed('Invalid email or password'))
-//     } else res.send(result.createFailed(error))
-//   })
-
-// })
-
-router.post('/singup',(req,res)=>{
-    const {first_name ,last_name ,email,password,mobile,birth} =req.body
-    const encryptPassword = String(cryptoJs.SHA256(password))
-  const sql = `INSERT INTO users(first_name ,last_name ,email,password,mobile,birth) VALUES(?,?,?,?,?,?)`
-  pool.query(
-    sql,
-    [first_name ,last_name ,email,encryptPassword,mobile ,birth ],
-    (error, data) => {
-      res.send(result.createResult(error, data))
+router.post('/register', async (req, res) => {
+    const { first_name,last_name, email, password, mobile, birth } = req.body
+    const sql = `INSERT INTO users(first_name,last_name,email,password,mobile,birth) VALUES(?,?,?,?,?,?)`
+    try {
+        const hashpassword = await bcrypt.hash(password, config.saltRounds)
+        pool.query(sql, [first_name,last_name, email, hashpassword, mobile,birth], (error, data) => {
+            res.send(result.createResult(error, data))
+        })
     }
-  )
+    catch (error) {
+        res.send(result.createResult(error))
+    }
 })
+
+router.post('/login', (req, res) => {
+    const { email, password } = req.body
+    const sql = `SELECT * FROM users WHERE email = ?`
+    pool.query(sql, [email], async (error, data) => {
+        if (data != '') {
+            const dbUser = data[0]
+            const userValid = await bcrypt.compare(password, dbUser.password)
+            if (userValid) {
+                // body part inside the jwt that needs to be encrypted
+                const payload = {
+                    uid: dbUser.uid
+                }
+                // create the jwt token
+                const token = jwt.sign(payload, config.secret)
+                const user = {
+                    token: token,
+                    name: dbUser.first_name,
+                    email: dbUser.email
+                }
+                res.send(result.createResult(error, user))
+            }
+            else
+                res.send(result.createResult('Invalid Password'))
+        }
+        else
+            res.send(result.createResult('Invalid Email'))
+    })
+})
+
+
+router.delete('/', (req, res) => {
+    const uid = req.uid
+    const sql = `DELETE FROM users WHERE uid = ?`
+    pool.query(sql, [uid], (error, data) => res.send(result.createResult(error, data)))
+})
+
+
 module.exports = router

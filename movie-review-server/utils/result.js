@@ -1,16 +1,14 @@
-function createResult(error,data){
-    if(data){
-        return createSuccess(data)
+function createResult(error, data) {
+    const result = {}
+    if (data) {
+        result['status'] = "success"
+        result['data'] = data
     }
-    else 
-        return createFailed(error)
-
-}
-function createSuccess(data){
-    return {status :"success",data:data}
-}
-function createFailed(error){
-    return {status:"error",error :error}
+    else {
+        result['status'] = "error"
+        result['error'] = error
+    }
+    return result
 }
 
-module.exports = {createResult ,createSuccess ,createFailed}
+module.exports = { createResult }
