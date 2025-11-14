@@ -54,9 +54,9 @@ router.post('/login', (req, res) => {
 
 
 router.delete('/', (req, res) => {
-    const uid = req.uid
-    const sql = `DELETE FROM users WHERE uid = ?`
-    pool.query(sql, [uid], (error, data) => res.send(result.createResult(error, data)))
+    const user_id = req.user_id
+    const sql = `DELETE FROM users WHERE user_id = ?`
+    pool.query(sql, [user_id], (error, data) => res.send(result.createResult(error, data)))
 })
 
 
